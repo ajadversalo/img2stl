@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import ThemeToggle from './theme-toggle';
 
 export const metadata: Metadata = {
   title: 'IconForge — Font Awesome to STL',
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ThemeToggle />
+      </body>
     </html>
   );
 }
