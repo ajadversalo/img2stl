@@ -112,7 +112,7 @@ function safeColor(value: string) {
   return /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : '#FFFFFF';
 }
 
-function meshTo3mfObject(mesh: THREE.Mesh, id: number, materialIndex: number, name: string) {
+function meshTo3mfObject(mesh: THREE.Mesh, id: number, materialIndex: number, name: string, paintColor?: string) {
   const geometry = mesh.geometry as THREE.BufferGeometry;
   const positions = geometry.getAttribute('position');
   const vertices: string[] = [];
@@ -122,12 +122,13 @@ function meshTo3mfObject(mesh: THREE.Mesh, id: number, materialIndex: number, na
     vertices.push(`<vertex x="${point.x.toFixed(5)}" y="${point.y.toFixed(5)}" z="${point.z.toFixed(5)}"/>`);
   }
 
+  const triangle = (a: number, b: number, c: number) => `<triangle v1="${a}" v2="${b}" v3="${c}"${paintColor ? ` paint_color="${paintColor}" slic3rpe:mmu_segmentation="${paintColor}"` : ''}/>`;
   const triangles: string[] = [];
   const index = geometry.index;
   if (index) {
-    for (let i = 0; i < index.count; i += 3) triangles.push(`<triangle v1="${index.getX(i)}" v2="${index.getX(i + 1)}" v3="${index.getX(i + 2)}"/>`);
+    for (let i = 0; i < index.count; i += 3) triangles.push(triangle(index.getX(i), index.getX(i + 1), index.getX(i + 2)));
   } else {
-    for (let i = 0; i < positions.count; i += 3) triangles.push(`<triangle v1="${i}" v2="${i + 1}" v3="${i + 2}"/>`);
+    for (let i = 0; i < positions.count; i += 3) triangles.push(triangle(i, i + 1, i + 2));
   }
 
   return `<object id="${id}" type="model" name="${xmlEscape(name)}" pid="1" pindex="${materialIndex}"><mesh><vertices>${vertices.join('')}</vertices><triangles>${triangles.join('')}</triangles></mesh></object>`;
@@ -186,16 +187,18 @@ function makeZip(files: { name: string; data: Uint8Array }[]) {
 function makePrintable3mf(group: THREE.Group, designColor: string, plateColor: string) {
   group.updateMatrixWorld(true);
   const meshes = group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh);
-  const objects = meshes.map((mesh, index) => meshTo3mfObject(mesh, index + 1, index === 0 ? 0 : 1, index === 0 ? 'Design' : 'Backing Plate'));
+  const objects = meshes.map((mesh, index) => meshTo3mfObject(mesh, index + 1, index === 0 ? 0 : 1, index === 0 ? 'Design' : 'Backing Plate', index === 0 ? undefined : '8'));
   const items = meshes.map((_, index) => `<item objectid="${index + 1}"/>`).join('');
-  const model = `<?xml version="1.0" encoding="UTF-8"?><model unit="millimeter" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources><basematerials id="1"><base name="Design" displaycolor="${safeColor(designColor)}"/><base name="Backing Plate" displaycolor="${safeColor(plateColor)}"/></basematerials>${objects.join('')}</resources><build>${items}</build></model>`;
-  const types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>';
+  const model = `<?xml version="1.0" encoding="UTF-8"?><model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" xmlns:slic3rpe="http://schemas.slic3r.org/3mf/2017/06"><resources><basematerials id="1"><base name="Design" displaycolor="${safeColor(designColor)}"/><base name="Backing Plate" displaycolor="${safeColor(plateColor)}"/></basematerials>${objects.join('')}</resources><build>${items}</build></model>`;
+  const types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="config" ContentType="application/xml"/></Types>';
   const relationships = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>';
+  const config = `<?xml version="1.0" encoding="UTF-8"?><config>${meshes.map((_, index) => `<object id="${index + 1}"><metadata type="object" key="extruder" value="${index === 0 ? 1 : 2}"/></object>`).join('')}</config>`;
   const encoder = new TextEncoder();
   return makeZip([
     { name: '[Content_Types].xml', data: encoder.encode(types) },
     { name: '_rels/.rels', data: encoder.encode(relationships) },
     { name: '3D/3dmodel.model', data: encoder.encode(model) },
+    { name: 'Metadata/Slic3r_PE_model.config', data: encoder.encode(config) },
   ]);
 }
 
