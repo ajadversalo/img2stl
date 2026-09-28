@@ -40,4 +40,10 @@ footer { display:flex; justify-content:space-between; color:#60625c; font:9px 'D
 .font-select select { flex:1; min-width:0; color:var(--ink); background:#10110f; border:1px solid #3c3e39; padding:9px 10px; outline:0; font:11px 'DM Mono',monospace; }
 .font-select select:focus { border-color:var(--green); }
 :root[data-theme='light'] .font-select select { background:#f0f2eb; border-color:#cdd2c7; }
+.color-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:30px; border-top:1px solid var(--line); padding:20px 0; }
+.color-control { display:flex; align-items:center; gap:10px; color:#969891; font:500 9px 'DM Mono',monospace; letter-spacing:.12em; }
+.color-control input[type='color'] { appearance:none; width:28px; height:28px; padding:0; border:1px solid #59694a; background:transparent; cursor:pointer; }
+.color-control input[type='color']::-webkit-color-swatch-wrapper { padding:3px; }
+.color-control input[type='color']::-webkit-color-swatch { border:0; }
+.color-control code { color:var(--ink); font:10px 'DM Mono',monospace; letter-spacing:.04em; }
 @media (max-width:760px) { .plate-settings { grid-template-columns:1fr; gap:20px; } }
